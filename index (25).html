@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Food Clicker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+
+    body {
+      background: linear-gradient(145deg, #ffecd2, #fcb69f);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .center {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .menu {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: opacity 0.8s ease;
+    }
+
+    .title {
+      font-size: 3em;
+      margin-bottom: 30px;
+      color: #333;
+      font-weight: bold;
+      animation: fadeIn 1.2s ease forwards;
+    }
+
+    .play-btn {
+      padding: 15px 40px;
+      font-size: 1.2em;
+      border: none;
+      background: #ff7f50;
+      color: white;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.3s ease, background 0.3s ease;
+    }
+
+    .play-btn:hover {
+      background: #ff5722;
+      transform: scale(1.1);
+    }
+
+    .parallax-bg {
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      top: -50%; left: -50%;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.2) 20%, transparent 80%);
+      z-index: -1;
+      transition: transform 0.2s ease-out;
+    }
+
+    .game {
+      display: none;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px;
+      overflow-y: auto; /* Allow scrolling */
+    }
+
+    .click-area {
+      font-size: 2em;
+      background: #ffb347;
+      padding: 20px 50px;
+      border-radius: 20px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #d2691e;
+      transition: all 0.2s ease, transform 0.2s;
+      margin-bottom: 50px; /* Increased margin to create more space */
+      user-select: none;
+    }
+
+    .click-area:active {
+      transform: scale(0.95);
+      box-shadow: 0 2px 0 #a0522d;
+    }
+
+    .counter {
+      font-size: 2em;
+      margin-top: 50px; /* Increased margin to create more space */
+      margin-bottom: 20px;
+    }
+
+    .upgrades {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .upgrade {
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: transform 0.3s ease;
+      min-width: 120px;
+      text-align: center;
+      user-select: none;
+    }
+
+    .upgrade:hover {
+      transform: translateY(-5px);
+    }
+
+    .upgrade.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .achievement {
+      font-size: 1.5em;
+      color: #ff5722;
+      margin-top: 20px;
+      font-weight: bold;
+      display: none;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes buttonClickAnimation {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.95); }
+      100% { transform: scale(1); }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="parallax-bg" id="parallax"></div>
+  <div class="menu" id="menu">
+    <div class="center">
+      <div class="title">🍔 Food Clicker</div>
+      <button class="play-btn" onclick="startGame()">Start Cooking</button>
+    </div>
+  </div>
+
+  <div class="game" id="game">
+    <div class="counter" id="counter">🍳 0 Dishes</div>
+    <div class="click-area" onclick="cook()" id="clickArea">Cook Dish</div>
+    <div class="upgrades" id="upgrades"></div>
+    <div class="achievement" id="achievement">Achievement Unlocked: "Unemployed?"</div>
+  </div>
+
+  <script>
+    const parallax = document.getElementById('parallax');
+    document.addEventListener('mousemove', e => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 30;
+      const y = (e.clientY / window.innerHeight - 0.5) * 30;
+      parallax.style.transform = `translate(${x}px, ${y}px)`;
+    });
+
+    const foods = [
+      { name: "🍕 Pizza", cost: 10, power: 1 },
+      { name: "🍣 Sushi", cost: 50, power: 5 },
+      { name: "🥗 Salad", cost: 200, power: 15 },
+      { name: "🍔 Burger", cost: 500, power: 30 },
+      { name: "🍰 Cake", cost: 1000, power: 60 },
+      { name: "🍜 Ramen", cost: 5000, power: 150 },
+      { name: "🍹 Juice", cost: 10000, power: 300 },
+      { name: "🍻 Beer", cost: 20000, power: 500 },
+      { name: "🍷 Wine", cost: 30000, power: 700 },
+      { name: "🍦 Ice Cream", cost: 40000, power: 1000 },
+      { name: "🍩 Donut", cost: 50000, power: 1200 },
+      { name: "🍫 Chocolate", cost: 100000, power: 1500 },
+      { name: "🥧 Pie", cost: 200000, power: 2500 },
+      { name: "🥛 Milk", cost: 300000, power: 4000 },
+      { name: "🍪 Cookie", cost: 500000, power: 6000 },
+      { name: "🍓 Strawberry", cost: 700000, power: 8000 },
+      { name: "🍊 Orange", cost: 800000, power: 10000 },
+      { name: "🍉 Watermelon", cost: 900000, power: 12000 },
+      { name: "🍍 Pineapple", cost: 1000000, power: 15000 },
+      { name: "🍑 Peach", cost: 1200000, power: 20000 },
+      { name: "🍒 Cherry", cost: 1400000, power: 25000 },
+      { name: "🍋 Lemon", cost: 1600000, power: 30000 },
+      { name: "🍌 Banana", cost: 1800000, power: 35000 },
+      { name: "🍏 Apple", cost: 2000000, power: 40000 },
+      { name: "🥥 Coconut", cost: 2200000, power: 45000 },
+      { name: "🥒 Cucumber", cost: 2400000, power: 50000 },
+      { name: "🍠 Sweet Potato", cost: 2600000, power: 60000 },
+      { name: "🥑 Avocado", cost: 2800000, power: 70000 },
+      { name: "🍅 Tomato", cost: 3000000, power: 80000 },
+      { name: "🍄 Mushroom", cost: 3200000, power: 90000 },
+      { name: "🍝 Spaghetti", cost: 3400000, power: 100000 },
+      { name: "🌽 Corn", cost: 3600000, power: 110000 },
+      { name: "🥯 Bagel", cost: 3800000, power: 120000 },
+      { name: "🍿 Popcorn", cost: 4000000, power: 130000 },
+      { name: "🍫 Brownie", cost: 4200000, power: 140000 },
+      { name: "🥮 Dumplings", cost: 4400000, power: 150000 },
+      { name: "🍟 Fries", cost: 4600000, power: 160000 },
+      { name: "🥩 Steak", cost: 4800000, power: 170000 },
+      { name: "🍪 Biscuit", cost: 5000000, power: 180000 },
+      { name: "🍕 Calzone", cost: 5200000, power: 190000 },
+      { name: "🍽️ Buffet", cost: 5400000, power: 200000 },
+    ];
+
+    let dishes = 0;
+    let clickPower = 1;
+    let upgradesBought = 0;
+
+    function startGame() {
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('game').style.display = 'flex';
+      loadGame();
+    }
+
+    function cook() {
+      dishes += clickPower;
+      document.getElementById('counter').textContent = `🍳 ${dishes} Dishes`;
+      checkForAchievement();
+      saveGame();
+    }
+
+    function buyUpgrade(index) {
+      const food = foods[index];
+      if (dishes >= food.cost) {
+        dishes -= food.cost;
+        clickPower += food.power;
+        upgradesBought++;
+        document.getElementById('counter').textContent = `🍳 ${dishes} Dishes`;
+        renderUpgrades();
+        checkForAchievement();
+        saveGame();
+      }
+    }
+
+    function renderUpgrades() {
+      const upgradesContainer = document.getElementById('upgrades');
+      upgradesContainer.innerHTML = '';
+      foods.forEach((food, i) => {
+        const el = document.createElement('div');
+        el.className = 'upgrade' + (dishes >= food.cost ? '' : ' disabled');
+        el.onclick = () => buyUpgrade(i);
+        el.innerHTML = `<strong>${food.name}</strong><br>+${food.power}/click<br>Cost: ${food.cost}`;
+        upgradesContainer.appendChild(el);
+      });
+    }
+
+    function checkForAchievement() {
+      if (upgradesBought === foods.length) {
+        document.getElementById('achievement').style.display = 'block';
+      }
+    }
+
+    function saveGame() {
+      localStorage.setItem('dishes', dishes);
+      localStorage.setItem('clickPower', clickPower);
+      localStorage.setItem('upgradesBought', upgradesBought);
+    }
+
+    function loadGame() {
+      const savedDishes = localStorage.getItem('dishes');
+      const savedClickPower = localStorage.getItem('clickPower');
+      const savedUpgrades = localStorage.getItem('upgradesBought');
+
+      if (savedDishes !== null) dishes = parseInt(savedDishes);
+      if (savedClickPower !== null) clickPower = parseInt(savedClickPower);
+      if (savedUpgrades !== null) upgradesBought = parseInt(savedUpgrades);
+
+      document.getElementById('counter').textContent = `🍳 ${dishes} Dishes`;
+      renderUpgrades();
+    }
+
+  </script>
+</body>
+</html>
